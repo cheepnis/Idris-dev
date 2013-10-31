@@ -22,6 +22,7 @@ import LLVM.General.AST.DataLayout
 import qualified LLVM.General.PassManager as PM
 import qualified LLVM.General.Module as MO
 import qualified LLVM.General.AST.IntegerPredicate as IPred
+import qualified LLVM.General.AST.FloatingPointPredicate as FPred
 import qualified LLVM.General.AST.Linkage as L
 import qualified LLVM.General.AST.Visibility as V
 import qualified LLVM.General.AST.CallingConvention as CC
@@ -165,6 +166,35 @@ initDefs tgt =
           ]
           (Do $ Ret (Just (LocalReference (UnName 1))) [])
         ]
+    , GlobalDefinition $ globalVariableDefaults
+      { G.name = Name "__idris_floatFmtStr"
+      , G.linkage = L.Internal
+      , G.isConstant = True
+      , G.hasUnnamedAddr = True
+      , G.type' = ArrayType 5 (IntegerType 8)
+      , G.initializer = Just $ C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) "%f" ++ [C.Int 8 0])
+      }
+    , rtsFun "floatStr" ptrI8 [FloatingPointType 64 IEEE]
+        [ BasicBlock (UnName 0)
+          [ UnName 1 := simpleCall "GC_malloc_atomic" [ConstantOperand (C.Int (tgtWordSize tgt) 21)]
+          , UnName 2 := simpleCall "snprintf"
+                       [ LocalReference (UnName 1)
+                       , ConstantOperand (C.Int (tgtWordSize tgt) 21)
+                       , ConstantOperand $ C.GetElementPtr True (C.GlobalReference . Name $ "__idris_floatFmtStr") [C.Int 32 0, C.Int 32 0]
+                       , LocalReference (UnName 0)
+                       ]
+          ]
+          (Do $ Ret (Just (LocalReference (UnName 1))) [])
+        ]
+    , exfun "llvm.sin.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.cos.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.tan.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.pow.f64"  (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.ceil.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.floor.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.exp.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.log.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.sqrt.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
     , exfun "llvm.trap" VoidType [] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
@@ -953,6 +983,57 @@ cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
 cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
 cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
 
+cgOp (LSLt   ATFloat) [x,y] = fCmp FPred.OLT x y
+cgOp (LSLe   ATFloat) [x,y] = fCmp FPred.OLE x y
+cgOp (LEq    ATFloat) [x,y] = fCmp FPred.OEQ  x y
+cgOp (LSGe   ATFloat) [x,y] = fCmp FPred.OGE x y
+cgOp (LSGt   ATFloat) [x,y] = fCmp FPred.OGT x y
+cgOp (LPlus  ATFloat) [x,y] = fbin x y (Add False False)
+cgOp (LMinus ATFloat) [x,y] = fbin x y (Sub False False)
+cgOp (LTimes ATFloat) [x,y] = fbin x y (Mul False False)
+cgOp (LSDiv  ATFloat) [x,y] = fbin x y (SDiv False)
+
+cgOp LFExp   [x] = fUn "exp" x 
+cgOp LFLog   [x] = fUn "log" x
+cgOp LFSin   [x] = fUn "sin" x
+cgOp LFCos   [x] = fUn "cos" x
+cgOp LFTan   [x] = fUn "tan" x
+-- cgOp LFASin  [x] =
+-- cgOp LFACos  [x] =
+-- cgOp LFATan  [x] =
+cgOp LFSqrt  [x] = fUn "sqrt" x
+cgOp LFFloor [x] = fUn "floor" x
+cgOp LFCeil  [x] = fUn "ceil" x
+
+
+cgOp (LIntFloat ITBig) [x] = do
+  x' <- unbox (FArith (ATInt ITBig)) x
+  uflt <- inst $ simpleCall "__gmpz_get_d"
+          [ x' ]
+  box (FArith ATFloat) uflt
+
+cgOp (LIntFloat ity) [x] = do
+  x' <- unbox (FArith (ATInt ity)) x
+  x'' <- inst $ SIToFP x' (IntegerType 64) []
+  box (FArith ATFloat) x''
+
+cgOp (LFloatInt ITBig) [x] = do
+  x' <- unbox (FArith ATFloat) x
+  z  <- alloc mpzTy
+  inst' $ simpleCall "__gmpz_init" [z]
+  inst' $ simpleCall "__mpz_set_d" [ z, x' ]
+  box (FArith (ATInt ITBig)) z
+
+cgOp (LFloatInt ity) [x] = do
+  x' <- unbox (FArith ATFloat) x
+  x'' <- inst $ FPToSI x' (IntegerType 64) []
+  box (FArith (ATInt ity)) x''
+
+cgOp LFloatStr [x] = do
+    x' <- unbox (FArith ATFloat) x
+    ustr <- inst (idrCall "__idris_floatStr" [x'])
+    box FString ustr 
+
 cgOp LNoOp xs = return $ last xs
 
 cgOp (LMkVec ety c) xs | c == length xs = do
@@ -1140,6 +1221,28 @@ iCmp ity pred x y = do
   nr <- inst $ ICmp pred nx ny []
   nr' <- inst $ SExt nr (ftyToTy $ cmpResultTy ity) []
   box (cmpResultTy ity) nr'
+
+fbin :: Operand -> Operand
+     -> (Operand -> Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
+fbin x y instCon = do
+  nx <- unbox (FArith ATFloat) x
+  ny <- unbox (FArith ATFloat) y
+  nr <- inst $ instCon nx ny []
+  box (FArith ATFloat) nr
+
+fCmp :: FPred.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
+fCmp pred x y = do
+  nx <- unbox (FArith ATFloat) x
+  ny <- unbox (FArith ATFloat) y
+  nr <- inst $ FCmp pred nx ny []
+  nr' <- inst $ SExt nr (ftyToTy $ (FArith ATFloat)) []
+  box (FArith ATFloat) nr'
+
+fUn :: String -> Operand -> Codegen Operand
+fUn name x = do
+  x' <- unbox (FArith ATFloat) x
+  x'' <- inst $ simpleCall ("llvm." ++ name ++ ".f64") [x']
+  box (FArith ATFloat) x''
 
 cmpResultTy :: IntTy -> FType
 cmpResultTy v@(ITVec _ _) = FArith (ATInt v)
