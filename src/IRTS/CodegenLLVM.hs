@@ -1007,16 +1007,14 @@ cgOp LFSqrt  [x] = fUn "sqrt" x
 cgOp LFFloor [x] = fUn "floor" x
 cgOp LFCeil  [x] = fUn "ceil" x
 
-
 cgOp (LIntFloat ITBig) [x] = do
   x' <- unbox (FArith (ATInt ITBig)) x
-  uflt <- inst $ simpleCall "__gmpz_get_d"
-          [ x' ]
+  uflt <- inst $ simpleCall "__gmpz_get_d" [ ]
   box (FArith ATFloat) uflt
 
 cgOp (LIntFloat ity) [x] = do
   x' <- unbox (FArith (ATInt ity)) x
-  x'' <- inst $ SIToFP x' (IntegerType 64) []
+  x'' <- inst $ SIToFP x' (FloatingPointType 64 IEEE) []
   box (FArith ATFloat) x''
 
 cgOp (LFloatInt ITBig) [x] = do
@@ -1026,9 +1024,10 @@ cgOp (LFloatInt ITBig) [x] = do
   inst' $ simpleCall "__gmpz_set_d" [ z, x' ]
   box (FArith (ATInt ITBig)) z
 
+
 cgOp (LFloatInt ity) [x] = do
   x' <- unbox (FArith ATFloat) x
-  x'' <- inst $ FPToSI x' (IntegerType 64) []
+  x'' <- inst $ FPToSI x' (ftyToTy $ cmpResultTy ity) []
   box (FArith (ATInt ity)) x''
 
 cgOp LFloatStr [x] = do
