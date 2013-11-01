@@ -1009,7 +1009,7 @@ cgOp LFCeil  [x] = fUn "ceil" x
 
 cgOp (LIntFloat ITBig) [x] = do
   x' <- unbox (FArith (ATInt ITBig)) x
-  uflt <- inst $ simpleCall "__gmpz_get_d" [ ]
+  uflt <- inst $ simpleCall "__gmpz_get_d" [ x' ]
   box (FArith ATFloat) uflt
 
 cgOp (LIntFloat ity) [x] = do
@@ -1023,7 +1023,6 @@ cgOp (LFloatInt ITBig) [x] = do
   inst' $ simpleCall "__gmpz_init" [z]
   inst' $ simpleCall "__gmpz_set_d" [ z, x' ]
   box (FArith (ATInt ITBig)) z
-
 
 cgOp (LFloatInt ity) [x] = do
   x' <- unbox (FArith ATFloat) x
