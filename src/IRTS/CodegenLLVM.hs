@@ -186,15 +186,15 @@ initDefs tgt =
           ]
           (Do $ Ret (Just (LocalReference (UnName 1))) [])
         ]
-    , exfun "llvm.sin.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.cos.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.tan.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.pow.f64"  (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.ceil.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.floor.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.exp.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.log.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
-    , exfun "llvm.sqrt.f64" (FloatingPointType 64 IEEE) [ (FloatingPointType 64 IEEE) ] False
+    , exfun "llvm.sin.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.cos.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.tan.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.pow.f64"  (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.ceil.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.floor.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.exp.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.log.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "llvm.sqrt.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.trap" VoidType [] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
@@ -218,6 +218,8 @@ initDefs tgt =
     , exfun "__gmpz_cmp" (IntegerType 32) [pmpz, pmpz] False
     , exfun "__gmpz_fdiv_q_2exp" VoidType [pmpz, pmpz, intPtr] False
     , exfun "__gmpz_mul_2exp" VoidType [pmpz, pmpz, intPtr] False
+    , exfun "__gmpz_get_d" (FloatingPointType 64 IEEE) [pmpz] False
+    , exfun "__gmpz_set_d" VoidType [pmpz, FloatingPointType 64 IEEE] False
     , exfun "mpz_get_ull" (IntegerType 64) [pmpz] False
     , exfun "mpz_init_set_ull" VoidType [pmpz, IntegerType 64] False
     , exfun "mpz_init_set_sll" VoidType [pmpz, IntegerType 64] False
@@ -1021,7 +1023,7 @@ cgOp (LFloatInt ITBig) [x] = do
   x' <- unbox (FArith ATFloat) x
   z  <- alloc mpzTy
   inst' $ simpleCall "__gmpz_init" [z]
-  inst' $ simpleCall "__mpz_set_d" [ z, x' ]
+  inst' $ simpleCall "__gmpz_set_d" [ z, x' ]
   box (FArith (ATInt ITBig)) z
 
 cgOp (LFloatInt ity) [x] = do
