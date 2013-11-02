@@ -172,7 +172,7 @@ initDefs tgt =
       , G.isConstant = True
       , G.hasUnnamedAddr = True
       , G.type' = ArrayType 5 (IntegerType 8)
-      , G.initializer = Just $ C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) "%f" ++ [C.Int 8 0])
+      , G.initializer = Just $ C.Array (IntegerType 8) (map (C.Int 8 . fromIntegral . fromEnum) "%g" ++ [C.Int 8 0])
       }
     , rtsFun "floatStr" ptrI8 [FloatingPointType 64 IEEE]
         [ BasicBlock (UnName 0)
