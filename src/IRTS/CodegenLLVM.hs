@@ -875,10 +875,10 @@ ftyToTy (FArith (ATInt (ITFixed ty))) = IntegerType (fromIntegral $ nativeTyWidt
 ftyToTy (FArith (ATInt (ITVec e c)))
     = VectorType (fromIntegral c) (IntegerType (fromIntegral $ nativeTyWidth e))
 ftyToTy (FArith (ATInt ITChar)) = IntegerType 32
+ftyToTy (FArith ATFloat) = FloatingPointType 64 IEEE
 ftyToTy FString = PointerType (IntegerType 8) (AddrSpace 0)
 ftyToTy FUnit = VoidType
 ftyToTy FPtr = PointerType (IntegerType 8) (AddrSpace 0)
-ftyToTy (FArith ATFloat) = FloatingPointType 64 IEEE
 ftyToTy FAny = valueType
 
 -- Only use when known not to be ITBig
@@ -987,13 +987,13 @@ cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
 
 cgOp (LSLt   ATFloat) [x,y] = fCmp FPred.OLT x y
 cgOp (LSLe   ATFloat) [x,y] = fCmp FPred.OLE x y
-cgOp (LEq    ATFloat) [x,y] = fCmp FPred.OEQ  x y
+cgOp (LEq    ATFloat) [x,y] = fCmp FPred.OEQ x y
 cgOp (LSGe   ATFloat) [x,y] = fCmp FPred.OGE x y
 cgOp (LSGt   ATFloat) [x,y] = fCmp FPred.OGT x y
-cgOp (LPlus  ATFloat) [x,y] = fbin x y (Add False False)
-cgOp (LMinus ATFloat) [x,y] = fbin x y (Sub False False)
-cgOp (LTimes ATFloat) [x,y] = fbin x y (Mul False False)
-cgOp (LSDiv  ATFloat) [x,y] = fbin x y (SDiv False)
+cgOp (LPlus  ATFloat) [x,y] = fbin x y FAdd
+cgOp (LMinus ATFloat) [x,y] = fbin x y FSub
+cgOp (LTimes ATFloat) [x,y] = fbin x y FMul 
+cgOp (LSDiv  ATFloat) [x,y] = fbin x y FDiv
 
 cgOp LFExp   [x] = fUn "exp" x 
 cgOp LFLog   [x] = fUn "log" x
@@ -1235,8 +1235,8 @@ fCmp pred x y = do
   nx <- unbox (FArith ATFloat) x
   ny <- unbox (FArith ATFloat) y
   nr <- inst $ FCmp pred nx ny []
-  nr' <- inst $ SExt nr (ftyToTy $ (FArith ATFloat)) []
-  box (FArith ATFloat) nr'
+--  nr' <- inst $ SExt nr (ftyToTy $ (FArith ATFloat)) []
+  box (FArith ATFloat) nr
 
 fUn :: String -> Operand -> Codegen Operand
 fUn name x = do
