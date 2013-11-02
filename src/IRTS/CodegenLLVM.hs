@@ -1235,8 +1235,7 @@ fCmp pred x y = do
   nx <- unbox (FArith ATFloat) x
   ny <- unbox (FArith ATFloat) y
   nr <- inst $ FCmp pred nx ny []
---  nr' <- inst $ SExt nr (ftyToTy $ (FArith ATFloat)) []
-  box (FArith ATFloat) nr
+  box (FArith (ATInt (ITFixed IT32))) nr
 
 fUn :: String -> Operand -> Codegen Operand
 fUn name x = do
