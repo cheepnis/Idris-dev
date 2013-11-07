@@ -188,13 +188,16 @@ initDefs tgt =
         ]
     , exfun "llvm.sin.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.cos.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
-    , exfun "llvm.tan.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.pow.f64"  (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.ceil.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.floor.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.exp.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.log.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.sqrt.f64" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "tan" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "asin" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "acos" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
+    , exfun "atan" (FloatingPointType 64 IEEE) [ FloatingPointType 64 IEEE ] False
     , exfun "llvm.trap" VoidType [] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i32" VoidType [ptrI8, ptrI8, IntegerType 32, IntegerType 32, IntegerType 1] False
     -- , exfun "llvm.llvm.memcpy.p0i8.p0i8.i64" VoidType [ptrI8, ptrI8, IntegerType 64, IntegerType 32, IntegerType 1] False
@@ -995,17 +998,17 @@ cgOp (LMinus ATFloat) [x,y] = fbin x y FSub
 cgOp (LTimes ATFloat) [x,y] = fbin x y FMul 
 cgOp (LSDiv  ATFloat) [x,y] = fbin x y FDiv
 
-cgOp LFExp   [x] = fUn "exp" x 
-cgOp LFLog   [x] = fUn "log" x
-cgOp LFSin   [x] = fUn "sin" x
-cgOp LFCos   [x] = fUn "cos" x
+cgOp LFExp   [x] = fUn "llvm.exp.f64" x 
+cgOp LFLog   [x] = fUn "llvm.log.f64" x
+cgOp LFSin   [x] = fUn "llvm.sin.f64" x
+cgOp LFCos   [x] = fUn "llvm.cos.f64" x
 cgOp LFTan   [x] = fUn "tan" x
--- cgOp LFASin  [x] =
--- cgOp LFACos  [x] =
--- cgOp LFATan  [x] =
-cgOp LFSqrt  [x] = fUn "sqrt" x
-cgOp LFFloor [x] = fUn "floor" x
-cgOp LFCeil  [x] = fUn "ceil" x
+cgOp LFASin  [x] = fUn "asin" x
+cgOp LFACos  [x] = fUn "acos" x
+cgOp LFATan  [x] = fUn "atan" x
+cgOp LFSqrt  [x] = fUn "llvm.sqrt.f64" x
+cgOp LFFloor [x] = fUn "llvm.floor.f64" x
+cgOp LFCeil  [x] = fUn "llvm.ceil.f64" x
 
 cgOp (LIntFloat ITBig) [x] = do
   x' <- unbox (FArith (ATInt ITBig)) x
@@ -1240,7 +1243,7 @@ fCmp pred x y = do
 fUn :: String -> Operand -> Codegen Operand
 fUn name x = do
   x' <- unbox (FArith ATFloat) x
-  x'' <- inst $ simpleCall ("llvm." ++ name ++ ".f64") [x']
+  x'' <- inst $ simpleCall name [x']
   box (FArith ATFloat) x''
 
 cmpResultTy :: IntTy -> FType
