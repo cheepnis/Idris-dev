@@ -973,42 +973,42 @@ cgOp (LSGe   (ATInt ity)) [x,y] = iCmp ity IPred.SGE x y
 cgOp (LSGt   (ATInt ity)) [x,y] = iCmp ity IPred.SGT x y
 cgOp (LGe    ity)         [x,y] = iCmp ity IPred.UGE x y
 cgOp (LGt    ity)         [x,y] = iCmp ity IPred.UGT x y
-cgOp (LPlus  (ATInt ity)) [x,y] = ibin ity x y (Add False False)
-cgOp (LMinus (ATInt ity)) [x,y] = ibin ity x y (Sub False False)
-cgOp (LTimes (ATInt ity)) [x,y] = ibin ity x y (Mul False False)
-cgOp (LSDiv  (ATInt ity)) [x,y] = ibin ity x y (SDiv False)
-cgOp (LSRem  (ATInt ity)) [x,y] = ibin ity x y SRem
-cgOp (LUDiv  ity) [x,y] = ibin ity x y (UDiv False)
-cgOp (LURem  ity) [x,y] = ibin ity x y URem
-cgOp (LAnd   ity) [x,y] = ibin ity x y And
-cgOp (LOr    ity) [x,y] = ibin ity x y Or
-cgOp (LXOr   ity) [x,y] = ibin ity x y Xor
-cgOp (LCompl ity) [x]   = iun ity x (Xor . ConstantOperand $ itConst ity (-1))
-cgOp (LSHL   ity) [x,y] = ibin ity x y (Shl False False)
-cgOp (LLSHR  ity) [x,y] = ibin ity x y (LShr False)
-cgOp (LASHR  ity) [x,y] = ibin ity x y (AShr False)
+cgOp (LPlus  ty@(ATInt _)) [x,y] = binary ty x y (Add False False)
+cgOp (LMinus ty@(ATInt _)) [x,y] = binary ty x y (Sub False False)
+cgOp (LTimes ty@(ATInt _)) [x,y] = binary ty x y (Mul False False)
+cgOp (LSDiv  ty@(ATInt _)) [x,y] = binary ty x y (SDiv False)
+cgOp (LSRem  ty@(ATInt _)) [x,y] = binary ty x y SRem
+cgOp (LUDiv  ity)          [x,y] = binary (ATInt ity) x y (UDiv False)
+cgOp (LURem  ity)          [x,y] = binary (ATInt ity) x y URem
+cgOp (LAnd   ity)          [x,y] = binary (ATInt ity) x y And
+cgOp (LOr    ity)          [x,y] = binary (ATInt ity) x y Or
+cgOp (LXOr   ity)          [x,y] = binary (ATInt ity) x y Xor
+cgOp (LCompl ity)          [x] = unary (ATInt ity) x (Xor . ConstantOperand $ itConst ity (-1))
+cgOp (LSHL   ity)          [x,y] = binary (ATInt ity) x y (Shl False False)
+cgOp (LLSHR  ity)          [x,y] = binary (ATInt ity) x y (LShr False)
+cgOp (LASHR  ity)          [x,y] = binary (ATInt ity) x y (AShr False)
 
 cgOp (LSLt   ATFloat) [x,y] = fCmp FPred.OLT x y
 cgOp (LSLe   ATFloat) [x,y] = fCmp FPred.OLE x y
 cgOp (LEq    ATFloat) [x,y] = fCmp FPred.OEQ x y
 cgOp (LSGe   ATFloat) [x,y] = fCmp FPred.OGE x y
 cgOp (LSGt   ATFloat) [x,y] = fCmp FPred.OGT x y
-cgOp (LPlus  ATFloat) [x,y] = fbin x y FAdd
-cgOp (LMinus ATFloat) [x,y] = fbin x y FSub
-cgOp (LTimes ATFloat) [x,y] = fbin x y FMul 
-cgOp (LSDiv  ATFloat) [x,y] = fbin x y FDiv
+cgOp (LPlus  ATFloat) [x,y] = binary ATFloat x y FAdd
+cgOp (LMinus ATFloat) [x,y] = binary ATFloat x y FSub
+cgOp (LTimes ATFloat) [x,y] = binary ATFloat x y FMul 
+cgOp (LSDiv  ATFloat) [x,y] = binary ATFloat x y FDiv
 
-cgOp LFExp   [x] = fUn "llvm.exp.f64" x 
-cgOp LFLog   [x] = fUn "llvm.log.f64" x
-cgOp LFSin   [x] = fUn "llvm.sin.f64" x
-cgOp LFCos   [x] = fUn "llvm.cos.f64" x
-cgOp LFTan   [x] = fUn "tan" x
-cgOp LFASin  [x] = fUn "asin" x
-cgOp LFACos  [x] = fUn "acos" x
-cgOp LFATan  [x] = fUn "atan" x
-cgOp LFSqrt  [x] = fUn "llvm.sqrt.f64" x
-cgOp LFFloor [x] = fUn "llvm.floor.f64" x
-cgOp LFCeil  [x] = fUn "llvm.ceil.f64" x
+cgOp LFExp   [x] = nunary ATFloat "llvm.exp.f64" x 
+cgOp LFLog   [x] = nunary ATFloat "llvm.log.f64" x
+cgOp LFSin   [x] = nunary ATFloat "llvm.sin.f64" x
+cgOp LFCos   [x] = nunary ATFloat "llvm.cos.f64" x
+cgOp LFTan   [x] = nunary ATFloat "tan" x
+cgOp LFASin  [x] = nunary ATFloat "asin" x
+cgOp LFACos  [x] = nunary ATFloat "acos" x
+cgOp LFATan  [x] = nunary ATFloat "atan" x
+cgOp LFSqrt  [x] = nunary ATFloat "llvm.sqrt.f64" x
+cgOp LFFloor [x] = nunary ATFloat "llvm.floor.f64" x
+cgOp LFCeil  [x] = nunary ATFloat "llvm.ceil.f64" x
 
 cgOp (LIntFloat ITBig) [x] = do
   x' <- unbox (FArith (ATInt ITBig)) x
@@ -1203,19 +1203,27 @@ cgStrCat x y = do
   inst' $ Store False end (ConstantOperand (C.Int 8 0)) Nothing 0 []
   box FString mem
 
-ibin :: IntTy -> Operand -> Operand
+binary :: ArithTy -> Operand -> Operand
      -> (Operand -> Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
-ibin ity x y instCon = do
-  nx <- unbox (FArith (ATInt ity)) x
-  ny <- unbox (FArith (ATInt ity)) y
+binary ty x y instCon = do
+  nx <- unbox (FArith ty) x
+  ny <- unbox (FArith ty) y
   nr <- inst $ instCon nx ny []
-  box (FArith (ATInt ity)) nr
+  box (FArith ty) nr
 
-iun :: IntTy -> Operand -> (Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
-iun ity x instCon = do
-  nx <- unbox (FArith (ATInt ity)) x
+unary :: ArithTy -> Operand 
+    -> (Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
+unary ty x instCon = do
+  nx <- unbox (FArith ty) x
   nr <- inst $ instCon nx []
-  box (FArith (ATInt ity)) nr
+  box (FArith ty) nr
+
+nunary :: ArithTy -> String
+     -> Operand -> Codegen Operand
+nunary ty name x = do
+  nx <- unbox (FArith ty) x
+  nr <- inst $ simpleCall name [nx]
+  box (FArith ty) nr
 
 iCmp :: IntTy -> IPred.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 iCmp ity pred x y = do
@@ -1225,26 +1233,12 @@ iCmp ity pred x y = do
   nr' <- inst $ SExt nr (ftyToTy $ cmpResultTy ity) []
   box (cmpResultTy ity) nr'
 
-fbin :: Operand -> Operand
-     -> (Operand -> Operand -> InstructionMetadata -> Instruction) -> Codegen Operand
-fbin x y instCon = do
-  nx <- unbox (FArith ATFloat) x
-  ny <- unbox (FArith ATFloat) y
-  nr <- inst $ instCon nx ny []
-  box (FArith ATFloat) nr
-
 fCmp :: FPred.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fCmp pred x y = do
   nx <- unbox (FArith ATFloat) x
   ny <- unbox (FArith ATFloat) y
   nr <- inst $ FCmp pred nx ny []
   box (FArith (ATInt (ITFixed IT32))) nr
-
-fUn :: String -> Operand -> Codegen Operand
-fUn name x = do
-  x' <- unbox (FArith ATFloat) x
-  x'' <- inst $ simpleCall name [x']
-  box (FArith ATFloat) x''
 
 cmpResultTy :: IntTy -> FType
 cmpResultTy v@(ITVec _ _) = FArith (ATInt v)
