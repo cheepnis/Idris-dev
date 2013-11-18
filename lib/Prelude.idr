@@ -17,6 +17,7 @@ import Prelude.Strings
 import Prelude.Chars
 import Prelude.Traversable
 import Prelude.Bits
+import Prelude.Float
 
 %access public
 %default total
