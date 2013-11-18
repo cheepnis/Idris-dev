@@ -93,6 +93,7 @@ test_llvm:
 	@perl ./runtest.pl test029 --codegen llvm
 	@perl ./runtest.pl test030 --codegen llvm
 	@perl ./runtest.pl test031 --codegen llvm
+	@perl ./runtest.pl test034 --codegen llvm
 
 update:
 	perl ./runtest.pl all -u
