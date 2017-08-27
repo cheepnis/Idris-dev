@@ -696,7 +696,7 @@ Bag MakeBagReadOnly(Bag bag);
 **  collections, using 978 KByte and the other two numbers are as above.
 */
 #if !defined(BOEHM_GC)
-typedef void (*TNumMsgsFuncBags)(uint64_t full, uint64_t phase, Int nr);
+typedef void (*TNumMsgsFuncBags)(uint64_t full, uint64_t phase, int nr);
 
 extern void InitMsgsFuncBags(TNumMsgsFuncBags msgs_func);
 #endif
@@ -929,15 +929,15 @@ extern void InitGlobalBag(Bag *addr, const char *cookie);
 
 #if !defined(BOEHM_GC)
 
-extern Int WarnInitGlobalBag;
+extern int64_t WarnInitGlobalBag;
 
 extern void SortGlobals(uint64_t byWhat);
 
 extern Bag *GlobalByCookie(const char *cookie);
 
-extern void StartRestoringBags(uint64_t nBags, UInt maxSize);
+extern void StartRestoringBags(uint64_t nBags, uint64_t maxSize);
 
-extern Bag NextBagRestoring(uint64_t type, UInt flags, UInt size);
+extern Bag NextBagRestoring(uint64_t type, uint64_t flags, uint64_t size);
 
 extern void FinishedRestoringBags(void);
 
@@ -1081,7 +1081,7 @@ extern void CheckMasterPointers(void);
 **  it  might want to display this   message before aborting the application.
 **  This function should never return.
 */
-typedef Bag *(*TNumAllocFuncBags)(Int size, uint64_t need);
+typedef Bag *(*TNumAllocFuncBags)(int64_t size, uint64_t need);
 
 typedef void (*TNumStackFuncBags)(void);
 
@@ -1116,7 +1116,7 @@ typedef struct {
   void *lock; /* void * so that we don't have to include pthread.h always */
   Bag obj;    /* references a unique T_REGION object per region */
   Bag name;   /* name of the region, or a null pointer */
-  Int prec;   /* locking precedence */
+  int prec;   /* locking precedence */
   int fixed_owner;
   void *owner;      /* opaque thread descriptor */
   void *alt_owner;  /* for paused threads */

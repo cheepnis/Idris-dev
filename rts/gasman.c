@@ -113,6 +113,9 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <setjmp.h>
 #include "gasman.h"                 /* garbage collector */
 
 
@@ -257,8 +260,8 @@ Bag *                   EndBags;
 
 #include <valgrind/valgrind.h>
 #include <valgrind/memcheck.h>
-Int canary_size() {
-  Int bufsize = (Int)EndBags - (Int)AllocBags;
+int64_t canary_size() {
+ int64_t bufsize = (int64_t)EndBags - (int64_t)AllocBags;
   return bufsize<4096?bufsize:4096;
 }
 
@@ -529,14 +532,14 @@ void InitMarkFuncBags (
 }
 
 #define MARKED_DEAD(x)  (x)
-#define MARKED_ALIVE(x) ((Bag)(((Char *)(x))+1))
-#define MARKED_HALFDEAD(x) ((Bag)(((Char *)(x))+2))
+#define MARKED_ALIVE(x) ((Bag)(((char *)(x))+1))
+#define MARKED_HALFDEAD(x) ((Bag)(((char *)(x))+2))
 #define IS_MARKED_ALIVE(bag) ((LINK_BAG(bag)) == MARKED_ALIVE(bag))
 #define IS_MARKED_DEAD(bag) ((LINK_BAG(bag)) == MARKED_DEAD(bag))
 #define IS_MARKED_HALFDEAD(bag) ((LINK_BAG(bag)) == MARKED_HALFDEAD(bag))
 #define UNMARKED_DEAD(x)  (x)
-#define UNMARKED_ALIVE(x) ((Bag)(((Char *)(x))-1))
-#define UNMARKED_HALFDEAD(x) ((Bag)(((Char *)(x))-2))
+#define UNMARKED_ALIVE(x) ((Bag)(((char *)(x))-1))
+#define UNMARKED_HALFDEAD(x) ((Bag)(((char *)(x))-2))
 
 
 void MarkNoSubBags( Bag bag )
@@ -671,7 +674,7 @@ TNumGlobalBags GlobalBags;
 **  it is used by 'CollectBags'. <cookie> is also recorded to allow things to
 **  be matched up after loading a saved workspace.
 */
-Int WarnInitGlobalBag;
+int64_t WarnInitGlobalBag;
 
 static uint64_t GlobalSortingStatus;
 extern TNumAbortFuncBags   AbortFuncBags;
@@ -691,7 +694,7 @@ void ClearGlobalBags ( void )
 
 void InitGlobalBag (
     Bag *               addr,
-    const Char *        cookie )
+    const char *        cookie )
 {
 
     if ( GlobalBags.nr == NR_GLOBAL_BAGS ) {
@@ -701,17 +704,17 @@ void InitGlobalBag (
 #ifdef DEBUG_GLOBAL_BAGS
     {
       uint64_t i;
-      if (cookie != (Char *)0)
+      if (cookie != (char *)0)
         for (i = 0; i < GlobalBags.nr; i++)
           if ( 0 == strcmp(GlobalBags.cookie[i], cookie) )
             if (GlobalBags.addr[i] == addr)
-              Pr("Duplicate global bag entry %s\n", (Int)cookie, 0L);
+              Pr("Duplicate global bag entry %s\n", (int64_t)cookie, 0L);
             else
-              Pr("Duplicate global bag cookie %s\n", (Int)cookie, 0L);
+              Pr("Duplicate global bag cookie %s\n", (int64_t)cookie, 0L);
     }
 #endif
     if ( WarnInitGlobalBag ) {
-        Pr( "#W  global bag '%s' initialized\n", (Int)cookie, 0L );
+      fprintf(stderr, "#W  global bag  initialized\n");
     }
     GlobalBags.addr[GlobalBags.nr] = addr;
     GlobalBags.cookie[GlobalBags.nr] = cookie;
@@ -721,9 +724,9 @@ void InitGlobalBag (
 
 
 
-static Int IsLessGlobal (
-    const Char *        cookie1,
-    const Char *        cookie2,
+static int64_t IsLessGlobal (
+    const char *        cookie1,
+    const char *        cookie2,
     uint64_t                byWhat )
 {
   if (byWhat != 2)
@@ -743,7 +746,7 @@ static Int IsLessGlobal (
 
 void SortGlobals( uint64_t byWhat )
 {
-  const Char *tmpcookie;
+  const char *tmpcookie;
   Bag * tmpaddr;
   uint64_t len, h, i, k;
   if (byWhat != 2)
@@ -780,14 +783,14 @@ void SortGlobals( uint64_t byWhat )
 
 
 Bag * GlobalByCookie(
-       const Char * cookie )
+       const char * cookie )
 {
   uint64_t i,top,bottom,middle;
-  Int res;
+ int64_t res;
   if (cookie == 0L)
     {
-      Pr("Panic -- 0L cookie passed to GlobalByCookie\n",0L,0L);
-      SyExit(2);
+      fprintf(stderr, "Panic -- 0L cookie passed to GlobalByCookie\n");
+      exit(2);
     }
   if (GlobalSortingStatus != 2)
     {
@@ -1246,7 +1249,7 @@ uint64_t ResizeBag (
 #endif
     SizeAllBags             += new_size - old_size;
     
-    const Int diff = WORDS_BAG(new_size) - WORDS_BAG(old_size);
+    const int64_t diff = WORDS_BAG(new_size) - WORDS_BAG(old_size);
 
     // if the real size of the bag doesn't change, not much needs to be done
     if ( diff == 0 ) {
@@ -1563,7 +1566,7 @@ uint64_t ResizeBag (
 **  identifiers can exist, and so 'CollectBags' frees these masterpointers.
 */
 
-syJmp_buf RegsBags;
+sigjmp_buf RegsBags;
 
 #if defined(SPARC)
 void SparcStackFuncBags( void )
@@ -1633,7 +1636,7 @@ uint64_t CollectBags (
     uint64_t                i;              /* loop variable                   */
 
     /*     Bag *               last;
-           Char                type; */
+           char                type; */
 
     CANARY_DISABLE_VALGRIND();
     CLEAR_CANARY();
@@ -1696,7 +1699,7 @@ again:
         (*StackFuncBags)();
     }
     else {
-      sySetjmp( RegsBags );
+      sigsetjmp(RegsBags, 0);
 #if defined(SPARC)
         SparcStackFuncBags();
 #endif
@@ -1872,7 +1875,7 @@ again:
     AllocBags = YoungBags = dst;
 
     /* clear the new free area                                             */
-    memset((void *)dst, 0, ((Char *)src)-((Char *)dst));
+    memset((void *)dst, 0, ((char *)src)-((char *)dst));
 
     /* information after the sweep phase                                   */
     NrDeadBags += nrDeadBags;
@@ -2044,7 +2047,8 @@ again:
 #endif
 
     /* Possibly advise the operating system about unused pages:            */
-    SyMAdviseFree();
+    // TODO: Tell OS about our memory intentions
+    // SyMAdviseFree();
 
     CANARY_ENABLE_VALGRIND();
 
@@ -2167,7 +2171,7 @@ uint64_t TNUM_BAG( Bag bag )
     return BAG_HEADER(bag)->type;
 }
 
-const Char * TNAM_BAG( Bag bag )
+const char * TNAM_BAG( Bag bag )
 {
     return InfoBags[ BAG_HEADER(bag)->type ].name;
 }
