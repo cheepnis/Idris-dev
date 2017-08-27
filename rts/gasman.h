@@ -36,12 +36,11 @@
 #ifndef GAP_GASMAN_H
 #define GAP_GASMAN_H
 
-#include <src/system.h>
-#include <src/debug.h>
+#include <assert.h>
+#include <stdint.h>
 
-#include <src/hpc/atomic.h>
-
-
+#define SIZEOF_VOID_P 8
+#define ASSERT(x) assert(x)
 
 /****************************************************************************
 **
@@ -49,53 +48,52 @@
 **
 **  'Bag'
 **
-**  Each bag is identified by its  *bag identifier*.  That  is each bag has a
-**  bag identifier and no  two live bags have the  same identifier.  'Bag' is
-**  the type of bag identifiers.
+**  Each bag is identified by its *bag identifier*. That is each bag has a bag
+**  identifier and no two live bags have the same identifier. 'Bag' is the type
+**  of bag identifiers.
 **
-**  0 is a  valid value of the type  'Bag', but is guaranteed  not to be  the
+**  0 is a valid value of the type 'Bag', but is guaranteed not to be the
 **  identifier of any bag.
 **
-**  'NewBag'  returns  the identifier of   the newly   allocated bag and  the
+**  'NewBag' returns the identifier of the newly allocated bag and the
 **  application passes this identifier to every {\Gasman} function to tell it
-**  which bag  it should  operate  on (see "NewBag",  "TNUM_BAG", "SIZE_BAG",
+**  which bag it should operate on (see "NewBag", "TNUM_BAG", "SIZE_BAG",
 **  "PTR_BAG", "CHANGED_BAG", "RetypeBag", and "ResizeBag").
 **
-**  Note that the  identifier of a  bag is different from  the address of the
-**  data area  of  the  bag.  This  address  may   change during  a   garbage
-**  collection while the identifier of a bag never changes.
+**  Note that the identifier of a bag is different from the address of the data
+**  area of the bag. This address may change during a garbage collection while
+**  the identifier of a bag never changes.
 **
-**  Bags  that contain references  to   other bags  must  always contain  the
+**  Bags that contain references to other bags must always contain the
 **  identifiers of these other bags, never the addresses of the data areas of
 **  the bags.
 **
-**  Note that bag identifiers are recycled.  That means that after a bag dies
-**  its identifier may be reused for a new bag.
+**  Note that bag identifiers are recycled. That means that after a bag dies its
+**  identifier may be reused for a new bag.
 **
 **  The following is defined in "system.h"
 **
-typedef UInt * *        Bag;
 */
 
+typedef uint64_t **Bag;
 
 /****************************************************************************
 **
 **
 */
 typedef struct {
-    uint8_t type : 8;
-    uint8_t flags : 8;
+  uint8_t type : 8;
+  uint8_t flags : 8;
 #if SIZEOF_VOID_P == 8
-    uint64_t size : 48;
+  uint64_t size : 48;
 #elif SIZEOF_VOID_P == 4
-    uint16_t reserved : 16;
-    uint32_t size : 32;
+  uint16_t reserved : 16;
+  uint32_t size : 32;
 #endif
 #if !defined(BOEHM_GC)
-    Bag link;
+  Bag link;
 #endif
 } BagHeader;
-
 
 /****************************************************************************
 **
@@ -103,11 +101,10 @@ typedef struct {
 **
 **  'BAG_HEADER' returns the header of the bag with the identifier <bag>.
 */
-static inline BagHeader * BAG_HEADER(Bag bag) {
-    GAP_ASSERT(bag);
-    return (((BagHeader *)*bag) - 1);
+static inline BagHeader *BAG_HEADER(Bag bag) {
+  ASSERT(bag);
+  return (((BagHeader *)*bag) - 1);
 }
-
 
 /****************************************************************************
 **
@@ -115,10 +112,9 @@ static inline BagHeader * BAG_HEADER(Bag bag) {
 **
 **  'BAG_HEADER' returns the header of the bag whose contents start at <ptr>.
 */
-static inline BagHeader * BAG_HEADER_CONTENTS(void *ptr) {
-    return (((BagHeader *)ptr) - 1);
+static inline BagHeader *BAG_HEADER_CONTENTS(void *ptr) {
+  return (((BagHeader *)ptr) - 1);
 }
-
 
 /****************************************************************************
 **
@@ -136,10 +132,7 @@ static inline BagHeader * BAG_HEADER_CONTENTS(void *ptr) {
 **  to  call  to  mark all subbags  of a  given bag (see "InitMarkFuncBags").
 **  Apart from that {\Gasman} does not care at all about types.
 */
-static inline UInt TNUM_BAG(Bag bag) {
-    return BAG_HEADER(bag)->type;
-}
-
+static inline uint64_t TNUM_BAG(Bag bag) { return BAG_HEADER(bag)->type; }
 
 /****************************************************************************
 **
@@ -168,15 +161,15 @@ static inline UInt TNUM_BAG(Bag bag) {
 **  7 (inclusive).
 */
 static inline uint8_t TEST_OBJ_FLAG(Bag bag, uint8_t flag) {
-    return BAG_HEADER(bag)->flags & flag;
+  return BAG_HEADER(bag)->flags & flag;
 }
 
 static inline void SET_OBJ_FLAG(Bag bag, uint8_t flag) {
-    BAG_HEADER(bag)->flags |= flag;
+  BAG_HEADER(bag)->flags |= flag;
 }
 
 static inline void CLEAR_OBJ_FLAG(Bag bag, uint8_t flag) {
-    BAG_HEADER(bag)->flags &= ~flag;
+  BAG_HEADER(bag)->flags &= ~flag;
 }
 
 /****************************************************************************
@@ -188,8 +181,7 @@ static inline void CLEAR_OBJ_FLAG(Bag bag, uint8_t flag) {
 **
 **  See also 'IS_INTOBJ' and 'IS_FFE'.
 */
-#define IS_BAG_REF(bag) (bag && !((Int)(bag)& 0x03))
-
+#define IS_BAG_REF(bag) (bag && !((Int)(bag)&0x03))
 
 /****************************************************************************
 **
@@ -206,10 +198,7 @@ static inline void CLEAR_OBJ_FLAG(Bag bag, uint8_t flag) {
 **  the size of a bag when it allocates it with 'NewBag' and may later change
 **  it with 'ResizeBag' (see "NewBag" and "ResizeBag").
 */
-static inline UInt SIZE_BAG(Bag bag) {
-    return BAG_HEADER(bag)->size;
-}
-
+static inline uint64_t SIZE_BAG(Bag bag) { return BAG_HEADER(bag)->size; }
 
 /****************************************************************************
 **
@@ -220,10 +209,9 @@ static inline UInt SIZE_BAG(Bag bag) {
 **  atomic operations that require a memory barrier in between dereferencing
 **  the bag pointer and accessing the contents of the bag.
 */
-static inline UInt SIZE_BAG_CONTENTS(void *ptr) {
-    return BAG_HEADER_CONTENTS(ptr)->size;
+static inline uint64_t SIZE_BAG_CONTENTS(void *ptr) {
+  return BAG_HEADER_CONTENTS(ptr)->size;
 }
-
 
 /****************************************************************************
 **
@@ -234,8 +222,7 @@ static inline UInt SIZE_BAG_CONTENTS(void *ptr) {
 **  Note that  'LINK_BAG' is  a macro,  so do not call it with arguments that
 **  have side effects.
 */
-#define LINK_BAG(bag)   (BAG_HEADER(bag)->link)
-
+#define LINK_BAG(bag) (BAG_HEADER(bag)->link)
 
 /****************************************************************************
 **
@@ -293,8 +280,7 @@ static inline UInt SIZE_BAG_CONTENTS(void *ptr) {
 **  Note that 'PTR_BAG' is a macro, so  do  not call it with  arguments  that
 **  have side effects.
 */
-#define PTR_BAG(bag)    (*(Bag**)(bag))
-
+#define PTR_BAG(bag) (*(Bag **)(bag))
 
 /****************************************************************************
 **
@@ -339,13 +325,13 @@ static inline UInt SIZE_BAG_CONTENTS(void *ptr) {
 
 #ifdef BOEHM_GC
 
-#define CHANGED_BAG(bag) ((void) 0)
+#define CHANGED_BAG(bag) ((void)0)
 
 #else
 
-extern  Bag *                   YoungBags;
+extern Bag *YoungBags;
 
-extern  Bag                     ChangedBags;
+extern Bag ChangedBags;
 
 /****************************************************************************
 **
@@ -355,7 +341,8 @@ extern  Bag                     ChangedBags;
 **  GAP's memory manager. Enabling MEMORY_CANARY will make an executable where
 **  valgrind will detect memory issues.
 **
-**  At the moment the detection is limited to only writing off the last allocated
+**  At the moment the detection is limited to only writing off the last
+*allocated
 **  block.
 */
 
@@ -363,15 +350,15 @@ extern  Bag                     ChangedBags;
 extern void CHANGED_BAG_IMPL(Bag b);
 #define CHANGED_BAG(bag) CHANGED_BAG_IMPL(bag);
 #else
-#define CHANGED_BAG(bag)                                                    \
-                if (   PTR_BAG(bag) <= YoungBags                              \
-                  && LINK_BAG(bag) == (bag) ) {                          \
-                    LINK_BAG(bag) = ChangedBags; ChangedBags = (bag);    }
+#define CHANGED_BAG(bag)                                                       \
+  if (PTR_BAG(bag) <= YoungBags && LINK_BAG(bag) == (bag)) {                   \
+    LINK_BAG(bag) = ChangedBags;                                               \
+    ChangedBags = (bag);                                                       \
+  }
 
 #endif // MEMORY_CANARY
 
 #endif // BOEHM_GC
-
 
 /****************************************************************************
 **
@@ -415,10 +402,7 @@ extern void CHANGED_BAG_IMPL(Bag b);
 **  areas of all bags may  change.  So you  must not keep any  pointers to or
 **  into the data areas of bags over calls to 'NewBag' (see "PTR_BAG").
 */
-extern  Bag             NewBag (
-            UInt                type,
-            UInt                size );
-
+extern Bag NewBag(uint64_t type, uint64_t size);
 
 /****************************************************************************
 **
@@ -444,16 +428,12 @@ extern  Bag             NewBag (
 **  data stored in the bag makes sense when the  bag is interpreted  as a bag
 **  of type <type>.
 */
-extern  void            RetypeBag (
-            Bag                 bag,
-            UInt                new_type );
+extern void RetypeBag(Bag bag, uint64_t new_type);
 
 #ifdef HPCGAP
-extern  void            RetypeBagIfWritable (
-            Bag                 bag,
-            UInt                new_type );
+extern void RetypeBagIfWritable(Bag bag, uint64_t new_type);
 #else
-#define RetypeBagIfWritable(x,y)     RetypeBag(x,y)
+#define RetypeBagIfWritable(x, y) RetypeBag(x, y)
 #endif
 
 /****************************************************************************
@@ -487,10 +467,7 @@ extern  void            RetypeBagIfWritable (
 **  data areas of all bags may change.  So you must not keep  any pointers to
 **  or into the data areas of bags over calls to 'ResizeBag' (see "PTR_BAG").
 */
-extern  UInt            ResizeBag (
-            Bag                 bag,
-            UInt                new_size );
-
+extern uint64_t ResizeBag(Bag bag, uint64_t new_size);
 
 /****************************************************************************
 **
@@ -514,19 +491,13 @@ extern  UInt            ResizeBag (
 **  of all bags may change.  So you must not keep any pointers to or into the
 **  data areas of bags over calls to 'CollectBags' (see "PTR_BAG").
 */
-extern  UInt            CollectBags (
-            UInt                size,
-            UInt                full );
-
+extern uint64_t CollectBags(uint64_t size, uint64_t full);
 
 /****************************************************************************
 **
 *F  SwapMasterPoint( <bag1>, <bag2> ) . . . swap pointer of <bag1> and <bag2>
 */
-extern void SwapMasterPoint (
-    Bag                 bag1,
-    Bag                 bag2 );
-
+extern void SwapMasterPoint(Bag bag1, Bag bag2);
 
 /****************************************************************************
 **
@@ -588,21 +559,20 @@ extern void SwapMasterPoint (
 **  message.
 **
 **  'NrHalfDeadBags'
-** 
+**
 **  'NrHalfDeadBags'  is  the number of  bags  that  have  been  found to  be
 **  reachable only by way of weak pointers since the last garbage collection.
 **  The bodies of these bags are deleted, but their identifiers are marked so
-**  that weak pointer objects can recognize this situation.  
+**  that weak pointer objects can recognize this situation.
 */
 
-extern  UInt                    NrAllBags;
-extern  UInt                    SizeAllBags;
-extern  UInt                    NrLiveBags;
-extern  UInt                    SizeLiveBags;
-extern  UInt                    NrDeadBags;
-extern  UInt                    SizeDeadBags;
-extern  UInt                    NrHalfDeadBags;
-
+extern uint64_t NrAllBags;
+extern uint64_t SizeAllBags;
+extern uint64_t NrLiveBags;
+extern uint64_t SizeLiveBags;
+extern uint64_t NrDeadBags;
+extern uint64_t SizeDeadBags;
+extern uint64_t NrHalfDeadBags;
 
 /****************************************************************************
 **
@@ -632,27 +602,32 @@ extern  UInt                    NrHalfDeadBags;
 **  This  information is only  kept if {\Gasman} is  compiled with the option
 **  '-DCOUNT_BAGS', e.g., with 'make <target> COPTS=-DCOUNT_BAGS'.
 */
-typedef struct  {
-    const Char *            name;
+typedef struct {
+  const char *name;
 #ifdef COUNT_BAGS
-    UInt                    nrLive;
-    UInt                    nrAll;
-    UInt                    sizeLive;
-    UInt                    sizeAll;
+  uint64_t nrLive;
+  uint64_t nrAll;
+  uint64_t sizeLive;
+  uint64_t sizeAll;
 #endif
 } TNumInfoBags;
 
-extern  TNumInfoBags            InfoBags [ 256 ];
-
+extern TNumInfoBags InfoBags[256];
 
 #ifdef HPCGAP
 void MakeBagTypePublic(int type);
 Bag MakeBagPublic(Bag bag);
 Bag MakeBagReadOnly(Bag bag);
 #else
-#define MakeBagTypePublic(type)     do { } while(0)
-#define MakeBagPublic(bag)          do { } while(0)
-#define MakeBagReadOnly(bag)        do { } while(0)
+#define MakeBagTypePublic(type)                                                \
+  do {                                                                         \
+  } while (0)
+#define MakeBagPublic(bag)                                                     \
+  do {                                                                         \
+  } while (0)
+#define MakeBagReadOnly(bag)                                                   \
+  do {                                                                         \
+  } while (0)
 #endif
 
 /****************************************************************************
@@ -721,13 +696,9 @@ Bag MakeBagReadOnly(Bag bag);
 **  collections, using 978 KByte and the other two numbers are as above.
 */
 #if !defined(BOEHM_GC)
-typedef void            (* TNumMsgsFuncBags) (
-            UInt                full,
-            UInt                phase,
-            Int                 nr );
+typedef void (*TNumMsgsFuncBags)(uint64_t full, uint64_t phase, Int nr);
 
-extern  void            InitMsgsFuncBags (
-            TNumMsgsFuncBags    msgs_func );
+extern void InitMsgsFuncBags(TNumMsgsFuncBags msgs_func);
 #endif
 
 /****************************************************************************
@@ -751,9 +722,8 @@ extern  void            InitMsgsFuncBags (
 **
 **  {\Gasman} already provides several marking functions, see below.
 */
-typedef void (* TNumMarkFuncBags )( Bag bag );
-extern void InitMarkFuncBags( UInt type, TNumMarkFuncBags mark_func );
-
+typedef void (*TNumMarkFuncBags)(Bag bag);
+extern void InitMarkFuncBags(uint64_t type, TNumMarkFuncBags mark_func);
 
 /****************************************************************************
 **
@@ -764,8 +734,7 @@ extern void InitMarkFuncBags( UInt type, TNumMarkFuncBags mark_func );
 **  simply returns.  For example   in  {\GAP} the  bags for   large  integers
 **  contain only the digits and no identifiers of bags.
 */
-extern void MarkNoSubBags( Bag bag );
-
+extern void MarkNoSubBags(Bag bag);
 
 /****************************************************************************
 **
@@ -778,11 +747,10 @@ extern void MarkNoSubBags( Bag bag );
 **  the indicated number as bag identifiers as their initial entries.
 **  These functions mark those subbags and return.
 */
-extern void MarkOneSubBags( Bag bag );
-extern void MarkTwoSubBags( Bag bag );
-extern void MarkThreeSubBags( Bag bag );
-extern void MarkFourSubBags( Bag bag );
-
+extern void MarkOneSubBags(Bag bag);
+extern void MarkTwoSubBags(Bag bag);
+extern void MarkThreeSubBags(Bag bag);
+extern void MarkFourSubBags(Bag bag);
 
 /****************************************************************************
 **
@@ -802,9 +770,9 @@ extern void MarkFourSubBags( Bag bag );
 **  bag identifiers for the elements  of the  list or 0   if an entry has  no
 **  assigned value.
 */
-extern void MarkAllSubBags( Bag bag );
+extern void MarkAllSubBags(Bag bag);
 
-extern void MarkAllSubBagsDefault ( Bag );
+extern void MarkAllSubBagsDefault(Bag);
 
 /****************************************************************************
 **
@@ -821,11 +789,10 @@ extern void MarkAllSubBagsDefault ( Bag );
 
 */
 #if !defined(BOEHM_GC)
-extern void MarkBag( Bag bag );
+extern void MarkBag(Bag bag);
 #else
-static inline void MarkBag( Bag bag ) {}
+static inline void MarkBag(Bag bag) {}
 #endif
-
 
 /****************************************************************************
 **
@@ -833,8 +800,7 @@ static inline void MarkBag( Bag bag ) {}
 **  code should use MarkBag directly instead.
 **
 */
-#define MARK_BAG(bag)   MarkBag(bag)
-
+#define MARK_BAG(bag) MarkBag(bag)
 
 /****************************************************************************
 **
@@ -849,9 +815,8 @@ static inline void MarkBag( Bag bag ) {}
 **  using such an identifier.
 */
 #if !defined(BOEHM_GC)
-extern void MarkBagWeakly( Bag bag );
+extern void MarkBagWeakly(Bag bag);
 #endif
-
 
 /****************************************************************************
 **
@@ -860,10 +825,7 @@ extern void MarkBagWeakly( Bag bag );
 **  'MarkArrayOfBags' iterates over <count> all bags in the given array,
 **  and marks each bag using MarkBag.
 */
-extern void MarkArrayOfBags( Bag array[], int count );
-
-
-
+extern void MarkArrayOfBags(Bag array[], int count);
 
 /****************************************************************************
 **
@@ -872,25 +834,23 @@ extern void MarkArrayOfBags( Bag array[], int count );
 
 #if !defined(BOEHM_GC)
 
-extern  Bag *                   MptrBags;
-extern  Bag *                   OldBags;
-extern  Bag *                   AllocBags;
+extern Bag *MptrBags;
+extern Bag *OldBags;
+extern Bag *AllocBags;
 
-#define IS_WEAK_DEAD_BAG(bag) ( (((UInt)bag & (sizeof(Bag)-1)) == 0) && \
-                                (Bag)MptrBags <= (bag)    &&          \
-                                (bag) < (Bag)OldBags  &&              \
-                                (((UInt)*bag) & (sizeof(Bag)-1)) == 1)
+#define IS_WEAK_DEAD_BAG(bag)                                                  \
+  ((((uint64_t)bag & (sizeof(Bag) - 1)) == 0) && (Bag)MptrBags <= (bag) &&     \
+   (bag) < (Bag)OldBags && (((uint64_t)*bag) & (sizeof(Bag) - 1)) == 1)
 
 #else
 
 #define IS_WEAK_DEAD_BAG(bag) (!(bag))
-#define REGISTER_WP(loc, obj) \
-	GC_general_register_disappearing_link((void **)(loc), (obj))
-#define FORGET_WP(loc) \
-	GC_unregister_disappearing_link((void **)(loc))
+#define REGISTER_WP(loc, obj)                                                  \
+  GC_general_register_disappearing_link((void **)(loc), (obj))
+#define FORGET_WP(loc) GC_unregister_disappearing_link((void **)(loc))
 
 #endif
-             
+
 /****************************************************************************
 **
 *F  InitSweepFuncBags(<type>,<sweep-func>)  . . . . install sweeping function
@@ -898,10 +858,11 @@ extern  Bag *                   AllocBags;
 **  'InitSweepFuncBags( <type>, <sweep-func> )'
 **
 **  'InitSweepFuncBags' installs the function <sweep-func> as sweeping
-**  function for bags of type <type>.  
+**  function for bags of type <type>.
 **
 **  A sweeping function is a function that takes two arguments src and dst of
-**  type Bag *, and  a third, length of type  UInt, and returns nothing. When
+**  type Bag *, and  a third, length of type  uint64_t, and returns nothing.
+*When
 **  it  is called, src points to  the start of the data  area of one bag, and
 **  dst to another. The function should copy the  data from the source bag to
 **  the destination, making any appropriate changes.
@@ -909,21 +870,15 @@ extern  Bag *                   AllocBags;
 **  Those functions are applied during  the garbage collection to each marked
 **  bag, i.e., bags that are assumed  to be still live  to move them to their
 **  new  position. The  intended  use is  for  weak  pointer bags, which must
-**  remove references to identifiers of  any half-dead objects. 
+**  remove references to identifiers of  any half-dead objects.
 **
 **  If no function  is installed for a TNum,  then the data is  simply copied
-**  unchanged and this is done particularly quickly 
+**  unchanged and this is done particularly quickly
 */
 
-typedef void            (* TNumSweepFuncBags ) (
-            Bag  *               src,
-            Bag *                dst,
-            UInt                 length);
+typedef void (*TNumSweepFuncBags)(Bag *src, Bag *dst, uint64_t length);
 
-extern  void            InitSweepFuncBags (
-            UInt                tnum,
-            TNumSweepFuncBags    sweep_func );
- 
+extern void InitSweepFuncBags(uint64_t tnum, TNumSweepFuncBags sweep_func);
 
 /****************************************************************************
 **
@@ -932,14 +887,13 @@ extern  void            InitSweepFuncBags (
 #if !defined(BOEHM_GC)
 
 #ifndef NR_GLOBAL_BAGS
-#define NR_GLOBAL_BAGS  20000L
+#define NR_GLOBAL_BAGS 20000L
 #endif
 
-
 typedef struct {
-    Bag *                   addr [NR_GLOBAL_BAGS];
-    const Char *            cookie [NR_GLOBAL_BAGS];
-    UInt                    nr;
+  Bag *addr[NR_GLOBAL_BAGS];
+  const char *cookie[NR_GLOBAL_BAGS];
+  uint64_t nr;
 } TNumGlobalBags;
 
 extern TNumGlobalBags GlobalBags;
@@ -971,30 +925,23 @@ extern TNumGlobalBags GlobalBags;
 **  after a save and load
 */
 
-extern void InitGlobalBag (
-            Bag *               addr,
-            const Char *        cookie );
+extern void InitGlobalBag(Bag *addr, const char *cookie);
 
 #if !defined(BOEHM_GC)
 
 extern Int WarnInitGlobalBag;
 
-extern void SortGlobals( UInt byWhat );
+extern void SortGlobals(uint64_t byWhat);
 
-extern Bag * GlobalByCookie(
-            const Char *        cookie );
+extern Bag *GlobalByCookie(const char *cookie);
 
+extern void StartRestoringBags(uint64_t nBags, UInt maxSize);
 
-extern void StartRestoringBags( UInt nBags, UInt maxSize);
+extern Bag NextBagRestoring(uint64_t type, UInt flags, UInt size);
 
-
-extern Bag NextBagRestoring( UInt type, UInt flags, UInt size );
-
-
-extern void FinishedRestoringBags( void );
+extern void FinishedRestoringBags(void);
 
 #endif
-
 
 /****************************************************************************
 **
@@ -1017,13 +964,9 @@ extern void FinishedRestoringBags( void );
 **  for the subbags of   <bag> (if there   are freeing functions for  bags of
 **  their types) are called before or after the freeing function for <bag>.
 */
-typedef void            (* TNumFreeFuncBags ) (
-            Bag                 bag );
+typedef void (*TNumFreeFuncBags)(Bag bag);
 
-extern  void            InitFreeFuncBag (
-            UInt                type,
-            TNumFreeFuncBags    free_func );
-
+extern void InitFreeFuncBag(uint64_t type, TNumFreeFuncBags free_func);
 
 /****************************************************************************
 **
@@ -1042,12 +985,10 @@ extern  void            InitFreeFuncBag (
 **  you do not have to update that pointer after every operation that might
 **  cause a garbage collection.
 */
-typedef void            (* TNumCollectFuncBags) ( void );
+typedef void (*TNumCollectFuncBags)(void);
 
-extern  void            InitCollectFuncBags (
-            TNumCollectFuncBags before_func,
-            TNumCollectFuncBags after_func );
-
+extern void InitCollectFuncBags(TNumCollectFuncBags before_func,
+                                TNumCollectFuncBags after_func);
 
 /****************************************************************************
 **
@@ -1065,7 +1006,7 @@ extern  void            InitCollectFuncBags (
 **
 */
 
-extern void CheckMasterPointers( void );
+extern void CheckMasterPointers(void);
 
 /****************************************************************************
 **
@@ -1140,29 +1081,22 @@ extern void CheckMasterPointers( void );
 **  it  might want to display this   message before aborting the application.
 **  This function should never return.
 */
-typedef Bag *           (* TNumAllocFuncBags) (
-                                Int             size,
-                                UInt            need );
+typedef Bag *(*TNumAllocFuncBags)(Int size, uint64_t need);
 
-typedef void            (* TNumStackFuncBags) ( void );
+typedef void (*TNumStackFuncBags)(void);
 
-typedef void            (* TNumAbortFuncBags) (
-                                const Char *    msg );
+typedef void (*TNumAbortFuncBags)(const char *msg);
 
-extern  void            InitBags (
-            TNumAllocFuncBags   alloc_func,
-            UInt                initial_size,
-            TNumStackFuncBags   stack_func,
-            Bag *               stack_bottom,
-            UInt                stack_align,
-            TNumAbortFuncBags   abort_func );
+extern void InitBags(TNumAllocFuncBags alloc_func, uint64_t initial_size,
+                     TNumStackFuncBags stack_func, Bag *stack_bottom,
+                     uint64_t stack_align, TNumAbortFuncBags abort_func);
 
 /****************************************************************************
 **
 *F  FinishBags() end GASMAN and free memory
 */
 
-extern void FinishBags( void );
+extern void FinishBags(void);
 
 /****************************************************************************
 **
@@ -1171,28 +1105,28 @@ extern void FinishBags( void );
 ** This calls a   C  function on every    bag, including ones  that  are  not
 ** reachable from    the root, and    will  be deleted  at the   next garbage
 ** collection, by simply  walking the masterpointer area. Not terribly safe
-** 
+**
 */
 
-extern void CallbackForAllBags(
-     void (*func)(Bag) );
+extern void CallbackForAllBags(void (*func)(Bag));
 
 #ifdef HPCGAP
 
-typedef struct
-{
-    void *lock;       /* void * so that we don't have to include pthread.h always */
-    Bag obj;          /* references a unique T_REGION object per region */
-    Bag name;         /* name of the region, or a null pointer */
-    Int prec;         /* locking precedence */
-    int fixed_owner;
-    void *owner;      /* opaque thread descriptor */
-    void *alt_owner;  /* for paused threads */
-    int count_active; /* whether we counts number of (contended) locks */
-    AtomicUInt locks_acquired;    /* number of times the lock was acquired successfully */
-    AtomicUInt locks_contended;   /* number of failed attempts at acuiring the lock */
-    unsigned char readers[];     /* this field extends with number of threads
-                                     don't add any fields after it */
+typedef struct {
+  void *lock; /* void * so that we don't have to include pthread.h always */
+  Bag obj;    /* references a unique T_REGION object per region */
+  Bag name;   /* name of the region, or a null pointer */
+  Int prec;   /* locking precedence */
+  int fixed_owner;
+  void *owner;      /* opaque thread descriptor */
+  void *alt_owner;  /* for paused threads */
+  int count_active; /* whether we counts number of (contended) locks */
+  AtomicUInt
+      locks_acquired; /* number of times the lock was acquired successfully */
+  AtomicUInt
+      locks_contended;     /* number of failed attempts at acuiring the lock */
+  unsigned char readers[]; /* this field extends with number of threads
+                               don't add any fields after it */
 } Region;
 
 /****************************************************************************
@@ -1215,9 +1149,8 @@ Region *RegionBag(Bag bag);
 
 #endif // HPCGAP
 
-
 #ifdef BOEHM_GC
-void *AllocateMemoryBlock(UInt size);
+void *AllocateMemoryBlock(uint64_t size);
 #endif
 
 #endif // GAP_GASMAN_H
