@@ -111,16 +111,9 @@
 **  already dead.
 */
 #include <string.h>
-#include <src/system.h>                 /* Ints, UInts */
-#include <src/gapstate.h>
-
-#include <src/gasman.h>                 /* garbage collector */
-
-#include <src/objects.h>                /* objects */
-#include <src/scanner.h>                /* scanner */
-
-
 #include <stddef.h>
+#include <stdint.h>
+#include "gasman.h"                 /* garbage collector */
 
 
 /****************************************************************************
@@ -257,7 +250,7 @@ Bag *                   MptrBags;
 Bag *                   OldBags;
 Bag *                   YoungBags;
 Bag *                   AllocBags;
-UInt                    AllocSizeBags;
+uint64_t                    AllocSizeBags;
 Bag *                   EndBags;
 
 #if defined(MEMORY_CANARY)
@@ -298,10 +291,10 @@ void CHANGED_BAG_IMPL(Bag bag) {
    (b) to ensure that unsigned subtracts and divides are used (since
    we know the ordering of the pointers. This is needed on > 2GB
    workspaces on 32 but systems. The Size****Area functions return an
-   answer in units of a word (ie sizeof(UInt) bytes), which should
+   answer in units of a word (ie sizeof(uint64_t) bytes), which should
    therefore be small enough not to cause problems. */
 
-#define SpaceBetweenPointers(a,b) (((UInt)((UInt)(a) - (UInt)(b)))/sizeof(Bag))
+#define SpaceBetweenPointers(a,b) (((uint64_t)((uint64_t)(a) - (uint64_t)(b)))/sizeof(Bag))
 
 #define SizeMptrsArea SpaceBetweenPointers(OldBags, MptrBags)
 #define SizeOldBagsArea SpaceBetweenPointers(YoungBags, OldBags)
@@ -422,13 +415,13 @@ Bag                     MarkedBags;
 *V  NrHalfDeadBags  . . . . . number of bags that died since the last full gc
 **                            but may still be weakly pointed to
 */
-UInt                    NrAllBags;
-UInt                    SizeAllBags;
-UInt                    NrLiveBags;
-UInt                    SizeLiveBags;
-UInt                    NrDeadBags;
-UInt                    SizeDeadBags;
-UInt                    NrHalfDeadBags;
+uint64_t                    NrAllBags;
+uint64_t                    SizeAllBags;
+uint64_t                    NrLiveBags;
+uint64_t                    SizeLiveBags;
+uint64_t                    NrDeadBags;
+uint64_t                    SizeDeadBags;
+uint64_t                    NrHalfDeadBags;
 
 
 /****************************************************************************
@@ -441,11 +434,11 @@ TNumInfoBags            InfoBags [ NTYPES ];
 **
 *F  IS_BAG -- check if a value looks like a masterpointer reference.
 */
-static inline UInt IS_BAG (
-    UInt                bid )
+static inline uint64_t IS_BAG (
+    uint64_t                bid )
 {
-    return (((UInt)MptrBags <= bid)
-         && (bid < (UInt)OldBags)
+    return (((uint64_t)MptrBags <= bid)
+         && (bid < (uint64_t)OldBags)
          && (bid & (sizeof(Bag)-1)) == 0);
 }
 
@@ -474,7 +467,7 @@ TNumSweepFuncBags TabSweepFuncBags [ NTYPES ];
 
 
 void InitSweepFuncBags (
-    UInt                type,
+    uint64_t                type,
     TNumSweepFuncBags    sweep_func )
 {
 #ifdef CHECK_FOR_CLASH_IN_INIT_SWEEP_FUNC
@@ -515,7 +508,7 @@ void InitSweepFuncBags (
 TNumMarkFuncBags TabMarkFuncBags [ NTYPES ];
 
 void InitMarkFuncBags (
-    UInt                type,
+    uint64_t                type,
     TNumMarkFuncBags    mark_func )
 {
 #ifdef CHECK_FOR_CLASH_IN_INIT_MARK_FUNC
@@ -616,7 +609,7 @@ void MarkAllSubBagsDefault( Bag bag )
 // to start with).
 inline void MarkBag( Bag bag )
 {
-  if ( (((UInt)bag) & (sizeof(Bag)-1)) == 0 /* really looks like a pointer */
+  if ( (((uint64_t)bag) & (sizeof(Bag)-1)) == 0 /* really looks like a pointer */
        && (Bag)MptrBags <= bag              /* in plausible range */
        && bag < (Bag)OldBags                /*  "    "       "    */
        && YoungBags < PTR_BAG(bag)          /*  points to a young bag */
@@ -630,7 +623,7 @@ inline void MarkBag( Bag bag )
 
 void MarkBagWeakly( Bag bag )
 {
-  if ( (((UInt)bag) & (sizeof(Bag)-1)) == 0 /* really looks like a pointer */
+  if ( (((uint64_t)bag) & (sizeof(Bag)-1)) == 0 /* really looks like a pointer */
        && (Bag)MptrBags <= bag              /* in plausible range */
        && bag < (Bag)OldBags                /*  "    "       "    */
        && YoungBags < PTR_BAG(bag)          /*  points to a young bag */
@@ -680,12 +673,12 @@ TNumGlobalBags GlobalBags;
 */
 Int WarnInitGlobalBag;
 
-static UInt GlobalSortingStatus;
+static uint64_t GlobalSortingStatus;
 extern TNumAbortFuncBags   AbortFuncBags;
 
 void ClearGlobalBags ( void )
 {
-  UInt i;
+  uint64_t i;
   for (i = 0; i < GlobalBags.nr; i++)
     {
       GlobalBags.addr[i] = 0L;
@@ -707,7 +700,7 @@ void InitGlobalBag (
     }
 #ifdef DEBUG_GLOBAL_BAGS
     {
-      UInt i;
+      uint64_t i;
       if (cookie != (Char *)0)
         for (i = 0; i < GlobalBags.nr; i++)
           if ( 0 == strcmp(GlobalBags.cookie[i], cookie) )
@@ -731,7 +724,7 @@ void InitGlobalBag (
 static Int IsLessGlobal (
     const Char *        cookie1,
     const Char *        cookie2,
-    UInt                byWhat )
+    uint64_t                byWhat )
 {
   if (byWhat != 2)
     {
@@ -748,11 +741,11 @@ static Int IsLessGlobal (
 
 
 
-void SortGlobals( UInt byWhat )
+void SortGlobals( uint64_t byWhat )
 {
   const Char *tmpcookie;
   Bag * tmpaddr;
-  UInt len, h, i, k;
+  uint64_t len, h, i, k;
   if (byWhat != 2)
     {
       (*AbortFuncBags)("can only sort globals by cookie");
@@ -789,7 +782,7 @@ void SortGlobals( UInt byWhat )
 Bag * GlobalByCookie(
        const Char * cookie )
 {
-  UInt i,top,bottom,middle;
+  uint64_t i,top,bottom,middle;
   Int res;
   if (cookie == 0L)
     {
@@ -827,9 +820,9 @@ Bag * GlobalByCookie(
 static Bag NextMptrRestoring;
 extern TNumAllocFuncBags       AllocFuncBags;
 
-void StartRestoringBags( UInt nBags, UInt maxSize)
+void StartRestoringBags( uint64_t nBags, uint64_t maxSize)
 {
-  UInt target;
+  uint64_t target;
   Bag *newmem;
 /*Bag *ptr; */
   target = (8*nBags)/7 + (8*maxSize)/7; /* ideal workspace size */
@@ -855,10 +848,10 @@ void StartRestoringBags( UInt nBags, UInt maxSize)
   NrAllBags = 0;
 }
 
-Bag NextBagRestoring( UInt type, UInt flags, UInt size )
+Bag NextBagRestoring( uint64_t type, uint64_t flags, uint64_t size )
 {
   Bag bag;
-  UInt i;
+  uint64_t i;
   BagHeader * header = (BagHeader *)AllocBags;
   *(Bag **)NextMptrRestoring = AllocBags = DATA(header);
   bag = NextMptrRestoring;
@@ -917,7 +910,7 @@ void FinishedRestoringBags( void )
 TNumFreeFuncBags        TabFreeFuncBags [ 256 ];
 
 void            InitFreeFuncBag (
-    UInt                type,
+    uint64_t                type,
     TNumFreeFuncBags    free_func )
 {
     TabFreeFuncBags[type] = free_func;
@@ -970,20 +963,20 @@ TNumStackFuncBags       StackFuncBags;
 
 Bag *                   StackBottomBags;
 
-UInt                    StackAlignBags;
+uint64_t                    StackAlignBags;
 
 TNumAbortFuncBags       AbortFuncBags;
 
 void            InitBags (
     TNumAllocFuncBags   alloc_func,
-    UInt                initial_size,
+    uint64_t                initial_size,
     TNumStackFuncBags   stack_func,
     Bag *               stack_bottom,
-    UInt                stack_align,
+    uint64_t                stack_align,
     TNumAbortFuncBags   abort_func )
 {
     Bag *               p;              /* loop variable                   */
-    UInt                i;              /* loop variable                   */
+    uint64_t                i;              /* loop variable                   */
 
     ClearGlobalBags();
     WarnInitGlobalBag = 0;
@@ -1069,8 +1062,8 @@ void            InitBags (
 **  needs to be recompiled.
 */
 Bag NewBag (
-    UInt                type,
-    UInt                size )
+    uint64_t                type,
+    uint64_t                size )
 {
     Bag                 bag;            /* identifier of the new bag       */
 
@@ -1133,15 +1126,15 @@ Bag NewBag (
 */
 void            RetypeBag (
     Bag                 bag,
-    UInt                new_type )
+    uint64_t                new_type )
 {
     BagHeader * header = BAG_HEADER(bag);
 
 #ifdef COUNT_BAGS
     /* update the statistics      */
     {
-          UInt                old_type;       /* old type of the bag */
-          UInt                size;
+          uint64_t                old_type;       /* old type of the bag */
+          uint64_t                size;
 
           old_type = header->type;
           size = header->size;
@@ -1233,18 +1226,18 @@ void            RetypeBag (
 **  If {\Gasman}  was compiled with the  option 'COUNT_BAGS' then 'ResizeBag'
 **  also updates the information in 'InfoBags' (see "InfoBags").
 */
-UInt ResizeBag (
+uint64_t ResizeBag (
     Bag                 bag,
-    UInt                new_size )
+    uint64_t                new_size )
 {
 #ifdef TREMBLE_HEAP
     CollectBags(0,0);
 #endif
 
     BagHeader * header = BAG_HEADER(bag);
-    UInt type     = header->type;
-    UInt flags    = header->flags;
-    UInt old_size = header->size;
+    uint64_t type     = header->type;
+    uint64_t flags    = header->flags;
+    uint64_t old_size = header->size;
 
 #ifdef COUNT_BAGS
     /* update the statistics                                               */
@@ -1585,7 +1578,7 @@ void GenStackFuncBags ( void )
 {
     Bag *               top;            /* top of stack                    */
     Bag *               p;              /* loop variable                   */
-    UInt                i;              /* loop variable                   */
+    uint64_t                i;              /* loop variable                   */
 
     top = (Bag*)((void*)&top);
     if ( StackBottomBags < top ) {
@@ -1609,7 +1602,7 @@ void GenStackFuncBags ( void )
 
 }
 
-UInt FullBags;
+uint64_t FullBags;
 
 /*  These are used to overwrite masterpointers which may still be
 linked from weak pointer objects but whose bag bodies have been
@@ -1622,22 +1615,22 @@ Bag * OldWeakDeadBagMarker = (Bag *)(1001*sizeof(Bag) + 1L);
 
 
 
-UInt CollectBags (
-    UInt                size,
-    UInt                full )
+uint64_t CollectBags (
+    uint64_t                size,
+    uint64_t                full )
 {
     Bag                 first;          /* first bag on a linked list      */
     Bag *               p;              /* loop variable                   */
     Bag *               dst;            /* destination in sweeping         */
     Bag *               src;            /* source in sweeping              */
     Bag *               end;            /* end of a bag in sweeping        */
-    UInt                nrLiveBags;     /* number of live new bags         */
-    UInt                sizeLiveBags;   /* total size of live new bags     */
-    UInt                nrDeadBags;     /* number of dead new bags         */
-    UInt                nrHalfDeadBags; /* number of dead new bags         */
-    UInt                sizeDeadBags;   /* total size of dead new bags     */
-    UInt                done;           /* do we have to make a full gc    */
-    UInt                i;              /* loop variable                   */
+    uint64_t                nrLiveBags;     /* number of live new bags         */
+    uint64_t                sizeLiveBags;   /* total size of live new bags     */
+    uint64_t                nrDeadBags;     /* number of dead new bags         */
+    uint64_t                nrHalfDeadBags; /* number of dead new bags         */
+    uint64_t                sizeDeadBags;   /* total size of dead new bags     */
+    uint64_t                done;           /* do we have to make a full gc    */
+    uint64_t                i;              /* loop variable                   */
 
     /*     Bag *               last;
            Char                type; */
@@ -1766,7 +1759,7 @@ again:
 
         /* dead bag                                                        */
 
-        else if ( ((UInt)(header->link)) % sizeof(Bag) == 0 ) {
+        else if ( ((uint64_t)(header->link)) % sizeof(Bag) == 0 ) {
 #ifdef DEBUG_MASTERPOINTERS
             if ( PTR_BAG( UNMARKED_DEAD(header->link) ) != DATA(header) ) {
                 (*AbortFuncBags)("incorrectly marked bag");
@@ -1799,7 +1792,7 @@ again:
         }
 
         /* half-dead bag                                                   */
-        else if ( ((UInt)(header->link)) % sizeof(Bag) == 2 ) {
+        else if ( ((uint64_t)(header->link)) % sizeof(Bag) == 2 ) {
 #ifdef DEBUG_MASTERPOINTERS
             if  ( PTR_BAG( UNMARKED_HALFDEAD(header->link) ) != DATA(header) ) {
                 (*AbortFuncBags)("incorrectly marked bag");
@@ -1817,7 +1810,7 @@ again:
 #endif
 
             /* don't free the identifier                                   */
-            if (((UInt)UNMARKED_HALFDEAD(header->link)) % 4 != 0)
+            if (((uint64_t)UNMARKED_HALFDEAD(header->link)) % 4 != 0)
               (*AbortFuncBags)("align error in halfdead bag");
 
             *(Bag**)(UNMARKED_HALFDEAD(header->link)) = NewWeakDeadBagMarker;
@@ -1829,7 +1822,7 @@ again:
         }
 
         /* live bag                                                        */
-        else if ( ((UInt)(header->link)) % sizeof(Bag) == 1 ) {
+        else if ( ((uint64_t)(header->link)) % sizeof(Bag) == 1 ) {
 #ifdef DEBUG_MASTERPOINTERS
             if  ( PTR_BAG( UNMARKED_ALIVE(header->link) ) != DATA(header) ) {
                 (*AbortFuncBags)("incorrectly marked bag");
@@ -1951,7 +1944,7 @@ again:
           Bag *mptr = (Bag *)*p;
           if ( mptr == OldWeakDeadBagMarker)
             NrHalfDeadBags--;
-          if ( mptr == OldWeakDeadBagMarker || IS_BAG((UInt)mptr) || mptr == 0)
+          if ( mptr == OldWeakDeadBagMarker || IS_BAG((uint64_t)mptr) || mptr == 0)
             {
               *p = FreeMptrBags;
               FreeMptrBags = (Bag)p;
@@ -2076,7 +2069,7 @@ void CheckMasterPointers( void )
           *ptr != (Bag)OldWeakDeadBagMarker &&
           (((Bag *)*ptr < MptrBags &&
             (Bag *)*ptr > AllocBags) ||
-           (UInt)(*ptr) % sizeof(Bag) != 0))
+           (uint64_t)(*ptr) % sizeof(Bag) != 0))
         (*AbortFuncBags)("Bad master pointer detected in check");
     }
 }
@@ -2154,14 +2147,14 @@ void SwapMasterPoint (
 #undef  SIZE_BAG
 #undef  PTR_BAG
 
-UInt BID( Bag bag )
+uint64_t BID( Bag bag )
 {
-    return (UInt) bag;
+    return (uint64_t) bag;
 }
 
 
 Bag BAG (
-    UInt                bid )
+    uint64_t                bid )
 {
     if ( IS_BAG(bid) )
         return (Bag) bid;
@@ -2169,7 +2162,7 @@ Bag BAG (
         return (Bag) 0;
 }
 
-UInt TNUM_BAG( Bag bag )
+uint64_t TNUM_BAG( Bag bag )
 {
     return BAG_HEADER(bag)->type;
 }
@@ -2179,7 +2172,7 @@ const Char * TNAM_BAG( Bag bag )
     return InfoBags[ BAG_HEADER(bag)->type ].name;
 }
 
-UInt SIZE_BAG( Bag bag )
+uint64_t SIZE_BAG( Bag bag )
 {
     return BAG_HEADER(bag)->size;
 }
@@ -2189,17 +2182,17 @@ Bag * PTR_BAG( Bag bag )
     return (*(Bag**)(bag));
 }
 
-UInt ELM_BAG (
+uint64_t ELM_BAG (
     Bag                 bag,
-    UInt                i )
+    uint64_t                i )
 {
-    return (UInt) ((*(Bag**)(bag))[i]);
+    return (uint64_t) ((*(Bag**)(bag))[i]);
 }
 
-UInt SET_ELM_BAG (
+uint64_t SET_ELM_BAG (
     Bag                 bag,
-    UInt                i,
-    UInt                elm )
+    uint64_t                i,
+    uint64_t                elm )
 {
     (*(Bag**)(bag))[i] = (Bag) elm;
     return elm;
