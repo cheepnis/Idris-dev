@@ -24,35 +24,60 @@
 #endif
 
 // Closures
+// TODO: In GAP these are TNUMs
+//       And in GASMAN these will be BagTypes
 typedef enum {
-    CT_CON, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
-    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_FWD,
-    CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
+    CT_CON = 1,
+    CT_INT,
+    CT_BIGINT,
+    CT_FLOAT,
+    CT_STRING,
+    CT_STROFFSET,
+    CT_BITS8,
+    CT_BITS16,
+    CT_BITS32,
+    CT_BITS64,
+    CT_UNIT,
+    CT_PTR,
+    CT_FWD,
+    CT_MANAGEDPTR,
+    CT_RAWDATA,
+    CT_CDATA
 } ClosureType;
 
-typedef struct Closure *VAL;
+// In GAP this is Obj
+typedef struct Bag VAL;
 
+// A list of arguments
+// Really dont need the arity because we'll know the bag size
 typedef struct {
     uint32_t tag_arity;
     VAL args[];
 } con;
 
+// Need to implement strings sensibly
+// and certainly not like this
 typedef struct {
     VAL str;
     size_t offset;
 } StrOffset;
 
+// We will just store the length of the string in the Bag
+// (just like GAP does)
 typedef struct {
     char* str;
     size_t len; // Cached strlen (we do 'strlen' a lot)
 } String;
 
+// TODO: How to?
 // A foreign pointer, managed by the idris GC
 typedef struct {
     size_t size;
     void* data;
 } ManagedPtr;
 
+// This is not needed with GASMAN, all information will
+// be encoded in the BAG
 typedef struct Closure {
 // Use top 16 bits of ty for saying which heap value is in
 // Bottom 16 bits for closure type
@@ -79,6 +104,7 @@ typedef struct Closure {
 
 struct VM;
 
+// Thread stuff we'll do even later.
 struct Msg_t {
     struct VM* sender;
     // An identifier to say which conversation this message is part of.

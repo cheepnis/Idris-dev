@@ -7,6 +7,7 @@
 typedef struct {
     size_t init_heap_size;
     size_t max_stack_size;
+    size_t stack_align;
     int    show_summary;
 } RTSOpts;
 

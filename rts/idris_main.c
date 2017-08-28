@@ -3,6 +3,19 @@
 #include "idris_rts.h"
 #include "idris_stats.h"
 
+#include "gasman.h"
+
+void gasman_idris_abort(const char *msg)
+{
+    fprintf(stderr, "%s\n", msg);
+    exit(2);
+}
+
+uint64_t ***gasman_idris_alloc(size_t size, uint need)
+{
+    
+}
+
 void _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
 #if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
 #include <Windows.h>
@@ -29,9 +42,10 @@ int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
 #endif
 
 // The default options should give satisfactory results under many circumstances.
-RTSOpts opts = { 
+RTSOpts opts = {
     .init_heap_size = 16384000,
     .max_stack_size = 4096000,
+    .stack_align    = 2,
     .show_summary   = 0
 };
 
@@ -47,6 +61,18 @@ int main(int argc, char **argv) {
 
     __idris_argc = argc;
     __idris_argv = argv;
+
+    /*
+     * Init GASMAN Garbage Collector
+     */
+    InitBags(
+        gasman_idris_alloc,      /* Allocation function SyAllocBags*/
+        opts.init_heap_size,     /* initial amount of storage, currently 16Mib */
+        0,                       /* stack function */
+        (Bag *)(((uint64_t)__idris_argc/opts.stack_align)*opts.stack_align),
+                                 /* Bottom of stack */
+        opts.stack_align,        /* stack alignment */
+        gasman_idris_abort);     /* SyAbortBags */
 
     VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1);
     init_threadkeys();
